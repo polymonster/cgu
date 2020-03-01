@@ -329,6 +329,7 @@ def get_type_declaration_scope(source, type_pos):
 def find_typedefs(fully_qualified_name, source):
     pos = 0
     typedefs = []
+    typedef_names = []
     while True:
         start_pos = find_token("typedef", source[pos:])
         if start_pos != -1:
@@ -338,10 +339,12 @@ def find_typedefs(fully_qualified_name, source):
             q = find_token(fully_qualified_name, typedef)
             if q != -1:
                 typedefs.append(source[start_pos:end_pos])
+                name = typedef[q+len(fully_qualified_name):end_pos].strip()
+                typedef_names.append(name)
             pos = end_pos
         else:
             break
-    return typedefs
+    return typedefs, typedef_names
 
 
 def find_type_attributes(source, type_pos):
@@ -361,6 +364,7 @@ def find_type_attributes(source, type_pos):
 # finds all type declarations.. ie struct, enum. returning them in dict with name, and code
 def find_type_declarations(type_specifier, source):
     results = []
+    names = []
     pos = 0
     while True:
         start_pos = find_token(type_specifier, source[pos:])
@@ -376,7 +380,7 @@ def find_type_declarations(type_specifier, source):
                 if s["type"] == "namespace":
                     qualified_name += s["name"] + "::"
             qualified_name += name
-            typedefs = find_typedefs(qualified_name, source)
+            typedefs, typedef_names = find_typedefs(qualified_name, source)
             attributes = find_type_attributes(source, start_pos)
             results.append({
                 "type": type_specifier,
@@ -386,12 +390,18 @@ def find_type_declarations(type_specifier, source):
                 "members": members,
                 "scope": scope,
                 "typedefs": typedefs,
+                "typedef_names": typedef_names,
                 "attributes": attributes
             })
             pos = end_pos+1
         else:
             break
-    return results
+    for r in results:
+        names.append(r["name"])
+        names.append(r["qualified_name"])
+        for name in r["typedef_names"]:
+            names.append(name)
+    return results, names
 
 
 # find include statements
@@ -457,14 +467,16 @@ def test():
     print("--------------------------------------------------------------------------------")
     print("find structs -------------------------------------------------------------------")
     print("--------------------------------------------------------------------------------")
-    structs = find_type_declarations("struct", source)
+    structs, struct_names = find_type_declarations("struct", source)
+    print(struct_names)
     print(json.dumps(structs, indent=4))
 
     # find enums
     print("--------------------------------------------------------------------------------")
     print("find enums ---------------------------------------------------------------------")
     print("--------------------------------------------------------------------------------")
-    enums = find_type_declarations("enum", source)
+    enums, enum_names = find_type_declarations("enum", source)
+    print(enum_names)
     print(json.dumps(enums, indent=4))
 
     # replace placeholder literals
