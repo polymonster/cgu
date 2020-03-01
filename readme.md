@@ -14,8 +14,9 @@ Before doing any parsing we need to prepare the source code to make life easier.
 
 ```python
 
-# first we want to sanitize the source, to make parsing easier.. this will remove empty lines and separate tokens with a single space and remove comments to eliminate any false parsing which may be inside comments
-
+# first we want to sanitize the source, to make parsing easier.. this will:
+# - remove empty lines and separate tokens with a single space 
+# - remove comments to eliminate any false parsing which may be inside comments
 source = sanitize_source(source)
 
 # from the sanitized source we can extract c/c++ include statements 
