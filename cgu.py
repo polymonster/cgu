@@ -48,6 +48,27 @@ def remove_comments(source):
     return conditioned
 
 
+# generates a nice UI friendly name from, snake_case, camelCase or SCAREY_CASE and strip known prefixes
+def display_name(token, title):
+    prefix = ["m_", "s_", "k_", "g_"]
+    for p in prefix:
+        if token.startswith(p):
+            token = token[len(p):]
+            break
+    spaced = ""
+    for i in range(len(token)):
+        if i > 0:
+            if token[i-1].islower() and token[i].isupper():
+                spaced += " "
+        spaced += token[i]
+    spaced = spaced.replace("_", " ")
+    if title:
+        spaced = spaced.title()
+    else:
+        spaced = spaced.capitalize()
+    return spaced
+
+
 # finds the end of a body of text enclosed between 2 symbols ie. [], {}, <>
 def enclose(open_symbol, close_symbol, source, pos):
     pos = source.find(open_symbol, pos)
@@ -485,6 +506,14 @@ def test():
     print("--------------------------------------------------------------------------------")
     source = replace_placeholder_string_literals(strings, source)
     print(format_source(source, 4))
+
+    # display names
+    print("--------------------------------------------------------------------------------")
+    print(" display name ------------------------------------------------------------------")
+    print("--------------------------------------------------------------------------------")
+    print(display_name("m_snake_case_variable", False))
+    print(display_name("m_camelCaseVariable", False))
+    print(display_name("SCAREY_CASE_DEFINE", True))
 
 
 # entry
