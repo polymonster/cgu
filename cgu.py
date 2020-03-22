@@ -463,12 +463,12 @@ def find_first(source, tokens, start):
 
 # break down arg decl (int a, int b, int c = 0) into contextual info
 def breakdown_function_args(args):
-    if args.find(",") == -1:
-        return []
     args = args.split(",")
     args_context = []
     for a in args:
         a = a.strip()
+        if len(a) == "":
+            continue
         dp = a.find("=")
         default = None
         decl = a
@@ -504,6 +504,9 @@ def find_functions(source):
                 args_end = statement.find(")")
                 name_pos = statement[:pp].rfind(" ")
                 name = statement[name_pos+1:pp]
+                name_unscoped = name.rfind(":")
+                if name_unscoped != -1:
+                    name = name[name_unscoped+1:]
                 return_type = statement[:name_pos].strip()
                 args = breakdown_function_args(statement[pp+1:args_end])
                 scope = get_type_declaration_scope(source, pos)
