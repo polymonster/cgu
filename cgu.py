@@ -321,28 +321,29 @@ def get_members(type_specifier, declaration):
 # finds the fully qualified scope for a type declaration
 def get_type_declaration_scope(source, type_pos):
     scope_identifier = [
-        "namespace"
+        "namespace",
+        "struct",
+        "class"
     ]
     pos = 0
     scopes = []
     while True:
-        for i in scope_identifier:
-            scope_start = source.find(i, pos)
-            if scope_start != -1:
-                scope_end = enclose("{", "}", source, scope_start)
-                if scope_end > type_pos > scope_start:
-                    scope_name = type_name(source[scope_start:scope_end])
-                    scopes.append({
-                        "type": i,
-                        "name": scope_name
-                    })
-                    pos = source.find("{", scope_start) + 1
-                else:
-                    pos = scope_end
+        scope_start, i = find_first(source, scope_identifier, pos)
+        if scope_start != -1:
+            scope_end = enclose("{", "}", source, scope_start)
+            if scope_end > type_pos > scope_start:
+                scope_name = type_name(source[scope_start:scope_end])
+                scopes.append({
+                    "type": i,
+                    "name": scope_name
+                })
+                pos = source.find("{", scope_start) + 1
             else:
-                return scopes
-            if pos > type_pos:
-                return scopes
+                pos = scope_end
+        else:
+            return scopes
+        if pos > type_pos:
+            return scopes
     return []
 
 
@@ -434,6 +435,91 @@ def find_include_statements(source):
     return includes
 
 
+# finds the next token ignoring white space
+def next_token(source, start):
+    white_space = [" ", "\n"]
+    pos = start+1
+    while True:
+        if source[pos] in white_space:
+            pos += 1
+        else:
+            return source[pos]
+        if pos >= len(source):
+            break
+    return None
+
+
+# find first token
+def find_first(source, tokens, start):
+    first = sys.maxsize
+    first_token = ""
+    for t in tokens:
+        i = source.find(t, start)
+        if first > i > -1:
+            first = i
+            first_token = t
+    return first, first_token
+
+
+# break down arg decl (int a, int b, int c = 0) into contextual info
+def breakdown_function_args(args):
+    if args.find(",") == -1:
+        return []
+    args = args.split(",")
+    args_context = []
+    for a in args:
+        a = a.strip()
+        dp = a.find("=")
+        default = None
+        decl = a
+        if dp != -1:
+            default = a[dp+1:].strip()
+            decl = a[:dp-1]
+        name_pos = decl.rfind(" ")
+        args_context.append({
+            "type": decl[:name_pos],
+            "name": decl[name_pos:],
+            "default": default
+        })
+    return args_context
+
+
+# find functions
+def find_functions(source):
+    # look for parenthesis to identiy function decls
+    functions = []
+    function_names = []
+    pos = 0
+    while True:
+        statement_end, statement_token = find_first(source, [";", "{"], pos)
+        if statement_end == -1:
+            break
+        statement = source[pos:statement_end]
+        pp = statement.find("(")
+        ep = statement.find("=")
+        if pp != -1:
+            next = next_token(statement, pp)
+            if (ep == -1 or pp < ep) and next != "*":
+                # this a function decl, so break down into context
+                args_end = statement.find(")")
+                name_pos = statement[:pp].rfind(" ")
+                name = statement[name_pos+1:pp]
+                return_type = statement[:name_pos].strip()
+                args = breakdown_function_args(statement[pp+1:args_end])
+                scope = get_type_declaration_scope(source, pos)
+                functions.append({
+                    "name": name,
+                    "return_type": return_type,
+                    "args": args,
+                    "scope": scope
+                })
+                function_names.append(name)
+        pos = statement_end + 1
+        if pos > len(source):
+            break
+    return functions, function_names
+
+
 # main function for scope
 def test():
     # read source from file
@@ -499,6 +585,14 @@ def test():
     enums, enum_names = find_type_declarations("enum", source)
     print(enum_names)
     print(json.dumps(enums, indent=4))
+
+    # find free functions
+    print("--------------------------------------------------------------------------------")
+    print("find functions -----------------------------------------------------------------")
+    print("--------------------------------------------------------------------------------")
+    functions, function_names = find_functions(source)
+    print(function_names)
+    print(json.dumps(functions, indent=4))
 
     # replace placeholder literals
     print("--------------------------------------------------------------------------------")

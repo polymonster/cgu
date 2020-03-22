@@ -25,6 +25,12 @@ namespace scope
 		{
 			// ..
 		}
+
+		// test for parenthesis that is not a function
+		int a = int(22);
+
+		// function pointer
+		void* (*pf)(void*) = nullptr;
 	};
 
 	enum test
@@ -42,6 +48,10 @@ namespace scope
 		flag3 = 1<<2,
 		flag4 = 1<<3
 	};
+
+	void function_decl();
+	void another_function_decl(int params);
+	const int* function_decl_attribs(int params, int def = 0);
 }
 
 // these kind of enums are nice, with scope
