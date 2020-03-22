@@ -330,6 +330,11 @@ def get_type_declaration_scope(source, type_pos):
     while True:
         scope_start, i = find_first(source, scope_identifier, pos)
         if scope_start != -1:
+            scp = source.find(";", scope_start)
+            pp = source.find("{", scope_start)
+            if pp > scp:
+                pos = scp
+                continue
             scope_end = enclose("{", "}", source, scope_start)
             if scope_end > type_pos > scope_start:
                 scope_name = type_name(source[scope_start:scope_end])
@@ -501,20 +506,31 @@ def find_functions(source):
             next = next_token(statement, pp)
             if (ep == -1 or pp < ep) and next != "*":
                 # this a function decl, so break down into context
+                body = ""
+                if statement_token == "{":
+                    body_end = enclose("{", "}", source, statement_end-1)
+                    body = source[statement_end-1:body_end]
+                    statement_end = body_end+1
                 args_end = statement.find(")")
                 name_pos = statement[:pp].rfind(" ")
                 name = statement[name_pos+1:pp]
                 name_unscoped = name.rfind(":")
+                qualifier = ""
                 if name_unscoped != -1:
+                    qualifier = name[:name_unscoped-1]
                     name = name[name_unscoped+1:]
                 return_type = statement[:name_pos].strip()
+                return_type = return_type.strip("}")
+                return_type = return_type.strip()
                 args = breakdown_function_args(statement[pp+1:args_end])
                 scope = get_type_declaration_scope(source, pos)
                 functions.append({
                     "name": name,
+                    "qualifier": qualifier,
                     "return_type": return_type,
                     "args": args,
-                    "scope": scope
+                    "scope": scope,
+                    "body": body
                 })
                 function_names.append(name)
         pos = statement_end + 1
