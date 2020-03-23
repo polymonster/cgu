@@ -489,6 +489,25 @@ def breakdown_function_args(args):
     return args_context
 
 
+# parse return type of function and split out any template or inline
+def parse_return_type(statement):
+    template = None
+    inline = None
+    rt = statement.strip("}")
+    rt = rt.strip()
+    tp = rt.find("template")
+    if tp != -1:
+        etp = enclose("<", ">", rt, tp)
+        template = rt[tp:etp]
+        rt = rt[etp:]
+    ip = rt.find("inline")
+    if ip != -1:
+        ipe = ip+len("inline")
+        inline = rt[:ipe]
+        rt = rt[ipe:]
+    return rt, template, inline
+
+
 # find functions
 def find_functions(source):
     # look for parenthesis to identiy function decls
@@ -519,9 +538,7 @@ def find_functions(source):
                 if name_unscoped != -1:
                     qualifier = name[:name_unscoped-1]
                     name = name[name_unscoped+1:]
-                return_type = statement[:name_pos].strip()
-                return_type = return_type.strip("}")
-                return_type = return_type.strip()
+                return_type, template, inline = parse_return_type(statement[:name_pos])
                 args = breakdown_function_args(statement[pp+1:args_end])
                 scope = get_type_declaration_scope(source, pos)
                 functions.append({
@@ -530,13 +547,28 @@ def find_functions(source):
                     "return_type": return_type,
                     "args": args,
                     "scope": scope,
-                    "body": body
+                    "body": body,
+                    "template": template,
+                    "inline": inline
                 })
                 function_names.append(name)
         pos = statement_end + 1
         if pos > len(source):
             break
     return functions, function_names
+
+
+# returns prototype with no names, ie (int, int, float), from a function context
+def get_funtion_prototype(func):
+    args = ""
+    num_args = len(func["args"])
+    for a in range(0, num_args):
+        args += func["args"][a]["type"]
+        if a < num_args - 1:
+            args += ", "
+    if num_args == 0:
+        args = "void"
+    return "(" + args + ")"
 
 
 # main function for scope
