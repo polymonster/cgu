@@ -466,26 +466,72 @@ def find_first(source, tokens, start):
     return first, first_token
 
 
+def arg_list(args):
+    pos = 0
+    a = []
+    while True:
+        # find comma separators
+        cp = args.find(",", pos)
+        ep = args.find("=", pos)
+        if cp == -1:
+            cp = args.find(")", pos)
+            if cp == -1:
+                # add final arg
+                aa = args[pos:].strip()
+                if len(aa) > 0:
+                    a.append(args[pos:])
+                break
+        if -1 < ep < cp:
+            # handle function with default
+            end, tok = find_first(args, [",", "{", "("], ep)
+            if tok == ",":
+                a.append(args[pos:end])
+                pos = end+1
+                continue
+            elif tok == "(":
+                end = enclose(tok, ")", args, end)
+            else:
+                end = enclose(tok, "}", args, end)
+            a.append(args[pos:end])
+            end, tok = find_first(args, [")", ","], end+1)
+            pos = end+1
+        else:
+            # plain arg
+            a.append(args[pos:cp])
+            pos = cp+1
+    return a
+
+
 # break down arg decl (int a, int b, int c = 0) into contextual info
 def breakdown_function_args(args):
-    args = args.split(",")
+    args = arg_list(args)
     args_context = []
     for a in args:
         a = a.strip()
         if len(a) == "":
             continue
-        dp = a.find("=")
-        default = None
-        decl = a
-        if dp != -1:
-            default = a[dp+1:].strip()
-            decl = a[:dp-1]
-        name_pos = decl.rfind(" ")
-        args_context.append({
-            "type": decl[:name_pos],
-            "name": decl[name_pos:],
-            "default": default
-        })
+        if a == "...":
+            # va list
+            args_context.append({
+                "type": "...",
+                "name": "va_list",
+                "default": None
+            })
+        else:
+            # any other args
+            dp = a.find("=")
+            default = None
+            decl = a
+            if dp != -1:
+                # extract default
+                default = a[dp + 1:].strip()
+                decl = a[:dp - 1]
+            name_pos = decl.rfind(" ")
+            args_context.append({
+                "type": decl[:name_pos],
+                "name": decl[name_pos:],
+                "default": default
+            })
     return args_context
 
 
@@ -530,7 +576,7 @@ def find_functions(source):
                     body_end = enclose("{", "}", source, statement_end-1)
                     body = source[statement_end-1:body_end]
                     statement_end = body_end+1
-                args_end = statement.find(")")
+                args_end = enclose("(", ")", statement, pp)-1
                 name_pos = statement[:pp].rfind(" ")
                 name = statement[name_pos+1:pp]
                 name_unscoped = name.rfind(":")
