@@ -467,6 +467,8 @@ def find_first(source, tokens, start):
 
 
 def arg_list(args):
+    args = args.replace("\n", " ")
+    args = re.sub(' +', ' ', args)
     pos = 0
     a = []
     while True:
@@ -474,18 +476,16 @@ def arg_list(args):
         cp = args.find(",", pos)
         ep = args.find("=", pos)
         if cp == -1:
-            cp = args.find(")", pos)
-            if cp == -1:
-                # add final arg
-                aa = args[pos:].strip()
-                if len(aa) > 0:
-                    a.append(args[pos:])
-                break
+            # add final arg
+            aa = args[pos:].strip()
+            if len(aa) > 0:
+                a.append(args[pos:].strip())
+            break
         if -1 < ep < cp:
             # handle function with default
             end, tok = find_first(args, [",", "{", "("], ep)
             if tok == ",":
-                a.append(args[pos:end])
+                a.append(args[pos:end].strip())
                 pos = end+1
                 continue
             elif tok == "(":
@@ -493,11 +493,13 @@ def arg_list(args):
             else:
                 end = enclose(tok, "}", args, end)
             a.append(args[pos:end])
-            end, tok = find_first(args, [")", ","], end+1)
+            end = args.find(",", end)
+            if end == -1:
+                end = len(args)
             pos = end+1
         else:
             # plain arg
-            a.append(args[pos:cp])
+            a.append(args[pos:cp].strip())
             pos = cp+1
     return a
 
