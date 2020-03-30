@@ -66,7 +66,7 @@ def display_name(token, title):
         spaced = spaced.title()
     else:
         spaced = spaced.capitalize()
-    return spaced
+    return spaced.strip()
 
 
 # finds the end of a body of text enclosed between 2 symbols ie. [], {}, <>
@@ -259,7 +259,8 @@ def get_enum_members(declaration):
     members = body.split(",")
     conditioned = []
     for member in members:
-        conditioned.append(member.strip())
+        if len(member.strip()) > 0:
+            conditioned.append(member.strip())
     enum_value = 0
     enum_members = []
     for member in conditioned:
